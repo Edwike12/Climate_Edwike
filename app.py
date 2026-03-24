@@ -36,10 +36,12 @@ artifacts = load_artifacts()
 best_rf = artifacts["best_rf"]
 scaler_lstm = artifacts["scaler_lstm"]
 label_encoder = artifacts["label_encoder"]
-feature_cols = artifacts["feature_cols"]
-series_features = artifacts["series_features"]
-lookback = artifacts["lookback"]
-rain_high_threshold = artifacts["rain_high_threshold"]
+
+feature_cols = [str(c) for c in list(artifacts["feature_cols"])]
+series_features = [str(c) for c in list(artifacts["series_features"])]
+
+lookback = int(artifacts["lookback"])
+rain_high_threshold = float(artifacts["rain_high_threshold"])
 lstm_model = artifacts["lstm_model"]
 
 st.subheader("Upload prepared feature data")
@@ -62,7 +64,7 @@ if uploaded_file is not None:
         st.error(f"Missing RF input columns: {missing_rf}")
     else:
         # LSTM needs the sequence features scaled
-        series_df = data[series_features].copy()
+        series_df = data.loc[:, series_features].copy()
         series_scaled = scaler_lstm.transform(series_df)
 
         if len(series_scaled) < lookback:
@@ -89,7 +91,11 @@ if uploaded_file is not None:
 
             X_rf = pred_rows[feature_cols].copy()
             y_pred_rf = best_rf.predict(X_rf)
-            y_pred_labels = label_encoder.inverse_transform(y_pred_rf)
+
+            if pd.api.types.is_numeric_dtype(y_pred_rf):
+                y_pred_labels = label_encoder.inverse_transform(y_pred_rf.astype(int))
+            else:
+                y_pred_labels = y_pred_rf
 
             pred_rows["predicted_future_risk"] = y_pred_labels
 
